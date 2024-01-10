@@ -1,5 +1,7 @@
 use clap::Parser;
 use fst_native::*;
+use tracing::{info, Level};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn hierarchy_tpe_to_str(tpe: &FstScopeType) -> &'static str {
   match tpe {
@@ -85,26 +87,41 @@ struct CliArgs {
   fst: String,
   /// File path to the properties file
   #[arg(short, long)]
-  properties: String,
+  properties: Option<String>,
 }
 
-fn main() {
-  let args = CliArgs::parse();
+fn main() -> anyhow::Result<()> {
+  let global_logger = FmtSubscriber::builder()
+    .with_env_filter(EnvFilter::from_default_env())
+    .with_max_level(Level::TRACE)
+    .compact()
+    .finish();
+  tracing::subscriber::set_global_default(global_logger)
+    .expect("internal error: fail to setup log subscriber");
 
-  println!("Reading FST from file: {}", args.fst);
-  let file = std::fs::File::open(args.fst).unwrap();
-  let mut reader = FstReader::open(std::io::BufReader::new(file)).unwrap();
+  let args = CliArgs::parse();
+  info!("Reading FST from file: {}", args.fst);
+
+  let file = std::fs::File::open(args.fst)?;
+  let mut reader = match FstReader::open(std::io::BufReader::new(file)) {
+    Ok(r) => r,
+    Err(e) => anyhow::bail!("{e:?}"),
+  };
+
   let header = reader.get_header();
-  println!(
-    "fst file start time: {}, fst file end time: {}",
-    header.start_time, header.end_time
+  info!(
+    version = header.version,
+    date = header.date,
+    start_time = header.start_time,
+    end_time = header.end_time,
+    "header info"
   );
 
   let h = FstSignalHandle::from_index(63);
   let f = FstFilter::filter_signals(vec![h]);
-  reader
-    .read_hierarchy(|hier: FstHierarchyEntry| println!("{}", hierarchy_to_str(&hier)))
-    .unwrap();
+  // reader
+  //   .read_hierarchy(|hier: FstHierarchyEntry| println!("{}", hierarchy_to_str(&hier)))
+  //   .unwrap();
   reader
     .read_signals(&f, |t, handle, value| {
       let v = match value {
@@ -114,4 +131,6 @@ fn main() {
       println!("time: {} handle: {} value: {}", t, handle, v);
     })
     .unwrap();
+
+  Ok(())
 }
