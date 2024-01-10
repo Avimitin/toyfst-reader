@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use clap::Parser;
 use fst_native::*;
-use tracing::{info, Level};
+use tracing::{info, trace, Level};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn hierarchy_tpe_to_str(tpe: &FstScopeType) -> &'static str {
@@ -101,6 +101,8 @@ fn main() -> anyhow::Result<()> {
   let global_logger = FmtSubscriber::builder()
     .with_env_filter(EnvFilter::from_default_env())
     .with_max_level(Level::TRACE)
+    .without_time()
+    .with_target(false)
     .compact()
     .finish();
   tracing::subscriber::set_global_default(global_logger)
@@ -116,12 +118,12 @@ fn main() -> anyhow::Result<()> {
   };
 
   let header = reader.get_header();
-  info!(
+  trace!(
     version = header.version,
     date = header.date,
     start_time = header.start_time,
     end_time = header.end_time,
-    "header info"
+    "Header info"
   );
 
   let expected = args.signals.split(',').collect::<Vec<_>>();
@@ -144,7 +146,7 @@ fn main() -> anyhow::Result<()> {
         .enumerate()
         .find(|(_, item)| item.get_index() == handle.get_index());
       if let Some((i, _)) = result {
-        info!("time: {} signal: {} value: {}", t, metadata.names[i], v);
+        trace!("time: {} signal: {} value: {}", t, metadata.names[i], v);
       }
     })
     .unwrap();
