@@ -1,3 +1,4 @@
+use clap::Parser;
 use fst_native::*;
 
 fn hierarchy_tpe_to_str(tpe: &FstScopeType) -> &'static str {
@@ -72,8 +73,26 @@ pub fn hierarchy_to_str(entry: &FstHierarchyEntry) -> String {
   }
 }
 
+#[derive(Parser, Debug)]
+#[command(
+  author = "Avimitin",
+  version = "v0.1.0",
+  about = "Extract signals from FST file"
+)]
+struct CliArgs {
+  /// File path to the fst file
+  #[arg(short, long)]
+  fst: String,
+  /// File path to the properties file
+  #[arg(short, long)]
+  properties: String,
+}
+
 fn main() {
-  let file = std::fs::File::open("./assets/wave.fst").unwrap();
+  let args = CliArgs::parse();
+
+  println!("Reading FST from file: {}", args.fst);
+  let file = std::fs::File::open(args.fst).unwrap();
   let mut reader = FstReader::open(std::io::BufReader::new(file)).unwrap();
   let header = reader.get_header();
   println!(
