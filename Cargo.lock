@@ -191,8 +191,7 @@ dependencies = [
 [[package]]
 name = "fst-native"
 version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "358300af2a47b0016e9c402908df46ccd453ca1a440c1b2ab67f54f949b5b6e6"
+source = "git+https://github.com/Avimitin/fst-native?branch=dev#ff1ff9658b4f0caf91bc3b9ff89622a72f295bc7"
 dependencies = [
  "bitvec",
  "flate2",

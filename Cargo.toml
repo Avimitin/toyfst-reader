@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fst-native = "0.6.3"
+fst-native = { git = "https://github.com/Avimitin/fst-native", branch = "dev" }
 clap = { version = "4.4", features = [ "derive" ] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "env-filter" ]  }
