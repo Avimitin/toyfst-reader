@@ -1,0 +1,3 @@
+{
+  "signals": ["requestRegDequeue_valid", "requestRegDequeue_ready"]
+}

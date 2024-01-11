@@ -19,9 +19,14 @@ struct CliArgs {
   /// File path to the properties file
   #[arg(short, long)]
   properties: Option<String>,
-  /// Signals that should be capture and outputs
+  /// File path to the runtime configuration
   #[arg(short, long)]
-  signals: String,
+  config: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Config {
+  signals: Vec<String>,
 }
 
 type MyFstReader = FstReader<std::io::BufReader<std::fs::File>>;
@@ -41,10 +46,7 @@ fn main() -> anyhow::Result<()> {
   info!("Reading FST from file: {}", args.fst);
 
   let file = std::fs::File::open(args.fst)?;
-  let mut reader = match FstReader::open(std::io::BufReader::new(file)) {
-    Ok(r) => r,
-    Err(e) => anyhow::bail!("{e:?}"),
-  };
+  let mut reader = FstReader::open(std::io::BufReader::new(file))?;
 
   let header = reader.get_header();
   trace!(
@@ -55,30 +57,30 @@ fn main() -> anyhow::Result<()> {
     "Header info"
   );
 
-  let expected = args.signals.split(',').collect::<Vec<_>>();
-  info!("Iterating hierachy to get signal information");
+  info!("Reading config from file {}", args.config);
+  let config = std::fs::read(args.config)?;
+  let config: Config = serde_json::from_slice(&config)?;
 
-  let metadata = collect_signals(&mut reader, &expected)?;
+  info!("Iterating hierachy to get signal information");
+  let metadata = collect_signals(&mut reader, &config.signals)?;
 
   info!("Fetching signals value");
 
-  let f = FstFilter::filter_signals(metadata.handle.clone());
-  reader
-    .read_signals(&f, |t, handle, value| {
-      let v = match value {
-        FstSignalValue::String(s) => s,
-        FstSignalValue::Real(r) => format!("real: {}", r),
-      };
-      let result = metadata
-        .handle
-        .iter()
-        .enumerate()
-        .find(|(_, item)| item.get_index() == handle.get_index());
-      if let Some((i, _)) = result {
-        trace!("time: {} signal: {} value: {}", t, metadata.names[i], v);
-      }
-    })
-    .unwrap();
+  let filter = FstFilter::filter_signals(metadata.handle.clone());
+  reader.read_signals(&filter, |t, handle, value| {
+    let v = match value {
+      FstSignalValue::String(s) => s,
+      FstSignalValue::Real(r) => format!("real: {}", r),
+    };
+    let result = metadata
+      .handle
+      .iter()
+      .enumerate()
+      .find(|(_, item)| item.get_index() == handle.get_index());
+    if let Some((i, _)) = result {
+      trace!("time: {} signal: {} value: {}", t, metadata.names[i], v);
+    }
+  })?;
 
   Ok(())
 }
@@ -98,13 +100,16 @@ impl SignalMetadata {
   }
 }
 
-fn collect_signals(reader: &mut MyFstReader, expected: &[&str]) -> anyhow::Result<SignalMetadata> {
+fn collect_signals(
+  reader: &mut MyFstReader,
+  expected: &[String],
+) -> anyhow::Result<SignalMetadata> {
   let mut metadata = SignalMetadata::default();
   let mut module_path: Vec<String> = Vec::new();
   let mut dedup_pool = HashSet::new();
-  let read_result = reader.read_hierarchy(|hier| match hier {
+  reader.read_hierarchy(|hier| match hier {
     FstHierarchyEntry::Var { name, handle, .. } => {
-      if expected.contains(&name.as_str()) && !dedup_pool.contains(&handle.get_index()) {
+      if expected.contains(&name) && !dedup_pool.contains(&handle.get_index()) {
         let id = handle.get_index();
         metadata.push(module_path.clone(), name, handle);
         dedup_pool.insert(id);
@@ -115,9 +120,7 @@ fn collect_signals(reader: &mut MyFstReader, expected: &[&str]) -> anyhow::Resul
       module_path.pop();
     }
     _ => (),
-  });
-  if let Err(err) = read_result {
-    anyhow::bail!("{:?}", err)
-  }
+  })?;
+
   Ok(metadata)
 }
