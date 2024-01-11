@@ -78,7 +78,13 @@ fn main() -> anyhow::Result<()> {
       .enumerate()
       .find(|(_, item)| item.get_index() == handle.get_index());
     if let Some((i, _)) = result {
-      trace!("time: {} signal: {} value: {}", t, metadata.names[i], v);
+      trace!(
+        "time: {} module: {} signal: {} value: {}",
+        t,
+        metadata.module_paths[i].join("."),
+        metadata.names[i],
+        v
+      );
     }
   })?;
 
