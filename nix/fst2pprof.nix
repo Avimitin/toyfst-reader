@@ -26,11 +26,11 @@ let
         in
         {
           dev = self.overrideAttrs (old: {
-            buildInputs = old.buildInputs ++ [
+            nativeBuildInputs = [
               # add rust-analyzer support for dev shell
               rust-analyzer-unwrapped
               rust-toolchain
-            ];
+            ] ++ old.nativeBuildInputs;
             env = {
               # To make rust-analyzer work correctly (The path prefix issue)
               RUST_SRC_PATH = "${rust-toolchain}/lib/rustlib/src/rust/library";
