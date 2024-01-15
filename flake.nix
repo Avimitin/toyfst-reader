@@ -15,24 +15,11 @@
   outputs = { self, nixpkgs, flake-utils, rust-overlay }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import rust-overlay) ];
+        overlays = [ (import rust-overlay) (import ./nix/overlay.nix) ];
         pkgs = import nixpkgs { inherit system overlays; };
-
-        rs-toolchain = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" ];
-        };
       in
       {
-        devShells.default = pkgs.mkShell {
-          buildInputs = [
-            # Including latest cargo,clippy,cargo-fmt
-            rs-toolchain
-            # rust-analyzer comes from nixpkgs toolchain, I want the unwrapped version
-            pkgs.rust-analyzer-unwrapped
-          ];
-
-          # To make rust-analyzer work correctly (The path prefix issue)
-          RUST_SRC_PATH = "${rs-toolchain}/lib/rustlib/src/rust/library";
-        };
+        legacyPackages = pkgs;
+        overlay.default = import ./nix/overlay.nix;
       });
 }
