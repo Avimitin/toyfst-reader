@@ -6,6 +6,8 @@ use serde::Deserialize;
 use tracing::{info, trace, Level};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+mod pprof;
+
 #[derive(Parser, Debug)]
 #[command(
   author = "Avimitin",

@@ -1,5 +1,6 @@
 { lib
 , rustPlatform
+, protobuf
 
   # dev deps
 , rust-bin
@@ -17,6 +18,8 @@ let
         lockFile = ../Cargo.lock;
         allowBuiltinFetchGit = true;
       };
+
+      nativeBuildInputs = [ protobuf ];
 
       passthru =
         let
