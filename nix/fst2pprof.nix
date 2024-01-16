@@ -1,6 +1,9 @@
 { lib
+, cmake
+, zlib-ng
 , rustPlatform
 , protobuf
+, pprof
 
   # dev deps
 , rust-bin
@@ -19,7 +22,7 @@ let
         allowBuiltinFetchGit = true;
       };
 
-      nativeBuildInputs = [ protobuf ];
+      nativeBuildInputs = [ protobuf cmake zlib-ng ];
 
       passthru =
         let
@@ -33,6 +36,7 @@ let
               # add rust-analyzer support for dev shell
               rust-analyzer-unwrapped
               rust-toolchain
+              pprof
             ] ++ old.nativeBuildInputs;
             env = {
               # To make rust-analyzer work correctly (The path prefix issue)
