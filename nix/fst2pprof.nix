@@ -4,6 +4,7 @@
 , rustPlatform
 , protobuf
 , pprof
+, graphviz
 
   # dev deps
 , rust-bin
@@ -37,6 +38,7 @@ let
               rust-analyzer-unwrapped
               rust-toolchain
               pprof
+              graphviz
             ] ++ old.nativeBuildInputs;
             env = {
               # To make rust-analyzer work correctly (The path prefix issue)
