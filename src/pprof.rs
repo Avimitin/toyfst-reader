@@ -19,7 +19,7 @@ impl StringTable {
     // According to pprof spec, the first item of the string table should left blank.
     Self {
       data: HashMap::from([(String::new(), 0)]),
-      next: 1,
+      next: 0,
     }
   }
 
@@ -30,9 +30,8 @@ impl StringTable {
       .data
       .entry(q.to_string())
       .or_insert_with(|| {
-        let n = self.next;
         self.next += 1;
-        n
+        self.next
       })
       .to_owned()
   }
