@@ -1,6 +1,8 @@
 use std::io::Result;
 
 fn main() -> Result<()> {
-  prost_build::compile_protos(&["src/profile.proto"], &["src/"])?;
+  let mut compile_config = prost_build::Config::default();
+  compile_config.type_attribute(".", "#[derive(typed_builder::TypedBuilder)]");
+  compile_config.compile_protos(&["src/profile.proto"], &["src/"])?;
   Ok(())
 }
