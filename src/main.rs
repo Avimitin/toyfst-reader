@@ -1,7 +1,11 @@
 use std::collections::HashSet;
+use std::io::Write;
 
 use clap::Parser;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use fst_native::*;
+use prost::Message;
 use serde::Deserialize;
 use tracing::{info, trace, Level};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -24,6 +28,8 @@ struct CliArgs {
   /// File path to the runtime configuration
   #[arg(short, long)]
   config: String,
+  #[arg(short, long)]
+  output: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,7 +53,7 @@ fn main() -> anyhow::Result<()> {
   let args = CliArgs::parse();
   info!("Reading FST from file: {}", args.fst);
 
-  let file = std::fs::File::open(args.fst)?;
+  let file = std::fs::File::open(&args.fst)?;
   let mut reader = FstReader::open(std::io::BufReader::new(file))?;
 
   let header = reader.get_header();
@@ -67,6 +73,17 @@ fn main() -> anyhow::Result<()> {
   let metadata = collect_signals(&mut reader, &config.signals)?;
 
   info!("Fetching signals value");
+
+  let mut str_tbl = pprof::StringTable::new();
+
+  let mut p = pprof::Profile::default();
+  p.time_nanos = 10000;
+  p.period_type = Some(pprof::ValueType {
+    r#type: str_tbl.id("cycle"),
+    unit: str_tbl.id("number"),
+  });
+  p.period = 1;
+  p.duration_nanos = (header.end_time - header.start_time).try_into().unwrap();
 
   let filter = FstFilter::filter_signals(metadata.handle.clone());
   reader.read_signals(&filter, |t, handle, value| {
@@ -90,6 +107,26 @@ fn main() -> anyhow::Result<()> {
     }
   })?;
 
+  p.string_table = str_tbl.to_string_table();
+
+  let mut buf = Vec::new();
+  buf.reserve(p.encoded_len());
+  p.encode(&mut buf).unwrap();
+
+  let mut encoder = GzEncoder::new(Vec::with_capacity(p.encoded_len()), Compression::default());
+  encoder.write_all(&buf).unwrap();
+
+  std::fs::write(
+    // if output path is not given, pprof proto file will be default writed into current path
+    // with same name as the .fst file
+    args.output.unwrap_or_else(|| {
+      let input_file_path = std::path::Path::new(&args.fst);
+      let filename = input_file_path.file_stem().unwrap().to_str().unwrap();
+      format!("{filename}.pprof.gz")
+    }),
+    encoder.finish().unwrap(),
+  )
+  .unwrap();
   Ok(())
 }
 
